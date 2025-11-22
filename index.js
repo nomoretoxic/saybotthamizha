@@ -43,17 +43,20 @@ const commands = [
         )
 ].map(cmd => cmd.toJSON());
 
-// Register slash commands
+// Register slash commands (GUILD ONLY)
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
 (async () => {
     try {
-        console.log('Registering slash commands...');
+        console.log('Registering guild slash commands...');
         await rest.put(
-            Routes.applicationCommands(process.env.CLIENT_ID),
+            Routes.applicationGuildCommands(
+                process.env.CLIENT_ID,
+                process.env.GUILD_ID // ← Only this server gets commands
+            ),
             { body: commands }
         );
-        console.log('Slash commands registered!');
+        console.log('Guild slash commands registered!');
     } catch (err) {
         console.error(err);
     }
@@ -67,6 +70,22 @@ client.on('ready', () => {
 // Command handling
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
+
+    // ❌ BLOCK DM USAGE
+    if (!interaction.guild) {
+        return interaction.reply({
+            content: "❌ This command cannot be used in DMs.",
+            ephemeral: true
+        });
+    }
+
+    // ❌ BLOCK OTHER SERVERS
+    if (interaction.guild.id !== process.env.GUILD_ID) {
+        return interaction.reply({
+            content: "❌ This command is not available in this server.",
+            ephemeral: true
+        });
+    }
 
     if (interaction.commandName === 'say') {
         const isOwner = interaction.guild.ownerId === interaction.user.id;
@@ -87,4 +106,6 @@ client.on('interactionCreate', async (interaction) => {
 // Start Discord bot
 client.login(process.env.TOKEN);
 
-    
+
+
+
